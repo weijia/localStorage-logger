@@ -1,5 +1,5 @@
 {
-  "name": "localstorage-logger",
+  "name": "@richard432/localstorage-logger",
   "version": "0.1.0",
   "description": "Lightweight localStorage-gated debug logger for browser/Node.js modules",
   "main": "dist/index.js",

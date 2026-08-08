@@ -3,19 +3,19 @@
 Lightweight localStorage-gated debug logger for browser/Node.js modules.
 
 **GitHub**: https://github.com/weijia/localStorage-logger
-**NPM**: `localstorage-logger`
+**NPM**: `@richard432/localstorage-logger`
 **设计文档**: [DESIGN.md](./DESIGN.md)
 
 ## 安装
 
 ```bash
-npm install localstorage-logger
+npm install @richard432/localstorage-logger
 ```
 
 ## 快速开始
 
 ```typescript
-import { createLogger } from 'localstorage-logger';
+import { createLogger } from '@richard432/localstorage-logger';
 
 const log = createLogger('my-app:auth');
 

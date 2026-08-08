@@ -63,7 +63,7 @@ function createLogger(module: string): Logger;
 #### 使用示例
 
 ```typescript
-import { createLogger } from 'localstorage-logger';
+import { createLogger } from '@richard432/localstorage-logger';
 
 const log = createLogger('my-app:sync');
 
@@ -276,7 +276,7 @@ export function listDebugModules(): { module: string; enabled: boolean }[] {
 
 ### 5.1 通用项目集成
 
-**依赖变更**：`package.json` 添加 `localstorage-logger` 作为 dependency。
+**依赖变更**：`package.json` 添加 `@richard432/localstorage-logger` 作为 dependency。
 
 **模块划分**（示例）：
 
@@ -293,7 +293,7 @@ export function listDebugModules(): { module: string; enabled: boolean }[] {
 console.log(`[my-app] syncBidirectional comparing source=${n} target=${n}`);
 
 // 改动后
-import { createLogger } from 'localstorage-logger';
+import { createLogger } from '@richard432/localstorage-logger';
 const log = createLogger('my-app:sync');
 log.log(`syncBidirectional comparing source=${n} target=${n}`);
 ```
