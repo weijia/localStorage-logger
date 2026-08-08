@@ -1,31 +1,31 @@
-# zen-fs-debug-logger — 设计文档
+# localStorage-logger — 设计文档
 
 ## 1. 背景与问题
 
-zen-fs 生态中（zen-fs-sync、zen-fs-config、zen-fs-config-admin）存在大量 `console.log/warn/error` 调用，这些调用绕过了已有的 logger 机制直接输出到控制台，导致：
+在浏览器端 JavaScript 项目中，开发者大量使用 `console.log/warn/error` 进行调试，但存在以下问题：
 
 1. **无法按模块开关**：所有日志始终输出，无法在生产环境中选择性关闭某个模块的日志
-2. **噪音过大**：约 110+ 处裸 console 调用，开发调试时信息淹没，生产环境也无法收敛
-3. **logger 形同虚设**：两个包各有 `logger.ts`，但业务代码全部绕过它
+2. **噪音过大**：大型项目中成百上千处 console 调用，开发调试时信息淹没，生产环境也无法收敛
+3. **缺乏统一机制**：各模块自行决定日志格式和开关方式，没有一致的方案
 
-### 现状统计
+### 典型场景
 
-| 包 | 文件 | console 调用数 | 是否走 logger |
+| 项目 | 文件 | console 调用数 | 问题 |
 |---|---|---|---|
-| zen-fs-sync | sync-pair.ts | 29 | 否 |
-| zen-fs-sync | utils.ts | 2 | 否 |
-| zen-fs-sync | logger.ts | 1 | 是（仅输出口） |
-| zen-fs-config | config-repo.ts | ~77 | 否 |
-| zen-fs-config | logger.ts | 1 | 是（仅输出口） |
+| 项目 A | sync-engine.ts | 29 | 全部裸 console，无法关闭 |
+| 项目 A | utils.ts | 2 | 同上 |
+| 项目 B | config-manager.ts | ~77 | 同上 |
+
+`localStorage-logger` 旨在提供一个通用、轻量、零依赖的解决方案。
 
 ## 2. 设计目标
 
-- **按模块独立控制**：每个模块（如 `zen-fs-sync:sync`、`zen-fs-config`）对应一个 localStorage key，独立开关
+- **按模块独立控制**：每个模块（如 `my-app:auth`、`my-app:sync`）对应一个 localStorage key，独立开关
 - **默认开启**：key 不存在时自动创建并设为 `1`，确保新模块开箱即可看到日志
 - **零依赖**：纯 TypeScript，不引入任何运行时依赖
 - **浏览器 + Node.js 兼容**：浏览器用 localStorage，Node.js 用环境变量 fallback
 - **简单 API**：`createLogger(module)` 返回 `{ log, warn, error }` 三个方法
-- **vConsole 友好**：所有输出通过 `console.log/warn/error`，vConsole 可自动捕获
+- **vConsole / DevTools 友好**：所有输出通过 `console.log/warn/error`，vConsole 可自动捕获
 
 ## 3. 核心设计
 
@@ -43,10 +43,10 @@ debug:<module-name>
 
 | key | 模块 | 默认值 |
 |---|---|---|
-| `debug:zen-fs-sync:sync` | zen-fs-sync 同步引擎 | `1` |
-| `debug:zen-fs-sync:utils` | zen-fs-sync 工具函数 | `1` |
-| `debug:zen-fs-config` | zen-fs-config 核心逻辑 | `1` |
-| `debug:zen-fs-config:meta` | zen-fs-config 元数据管理 | `1` |
+| `debug:my-app:auth` | 认证模块 | `1` |
+| `debug:my-app:sync` | 同步引擎 | `1` |
+| `debug:my-app:api` | API 层 | `1` |
+| `debug:lib:utils` | 工具库 | `1` |
 
 ### 3.2 API 设计
 
@@ -63,13 +63,13 @@ function createLogger(module: string): Logger;
 #### 使用示例
 
 ```typescript
-import { createLogger } from 'zen-fs-debug-logger';
+import { createLogger } from 'localstorage-logger';
 
-const log = createLogger('zen-fs-sync:sync');
+const log = createLogger('my-app:sync');
 
-log.log('syncBidirectional START', pairId);     // [zen-fs-sync:sync] syncBidirectional START xxx
-log.warn('DELETE SKIP', path, err);              // [zen-fs-sync:sync] DELETE SKIP /path Error(...)
-log.error('UPDATE FAIL', path, err);             // [zen-fs-sync:sync] UPDATE FAIL /path Error(...)
+log.log('syncBidirectional START', pairId);     // [my-app:sync] syncBidirectional START xxx
+log.warn('DELETE SKIP', path, err);              // [my-app:sync] DELETE SKIP /path Error(...)
+log.error('UPDATE FAIL', path, err);             // [my-app:sync] UPDATE FAIL /path Error(...)
 ```
 
 #### 用户控制
@@ -78,23 +78,23 @@ log.error('UPDATE FAIL', path, err);             // [zen-fs-sync:sync] UPDATE FA
 
 ```javascript
 // 关闭某模块日志
-localStorage.setItem('debug:zen-fs-sync:sync', '0');
+localStorage.setItem('debug:my-app:sync', '0');
 
 // 开启某模块日志
-localStorage.setItem('debug:zen-fs-sync:sync', '1');
+localStorage.setItem('debug:my-app:sync', '1');
 
 // 删除 key，下次访问时自动重建为 '1'（重新开启）
-localStorage.removeItem('debug:zen-fs-sync:sync');
+localStorage.removeItem('debug:my-app:sync');
 ```
 
 ### 3.3 运行时行为
 
 ```
-createLogger('zen-fs-sync:sync')
+createLogger('my-app:sync')
   │
   ├── log/warn/error 被调用
   │     │
-  │     ├── 检查 localStorage.getItem('debug:zen-fs-sync:sync')
+  │     ├── 检查 localStorage.getItem('debug:my-app:sync')
   │     │     │
   │     │     ├── null → localStorage.setItem(key, '1'), 返回 true
   │     │     ├── '1' → 返回 true
@@ -128,8 +128,8 @@ process.env.DEBUG_<MODULE_NAME>
 
 | 模块名 | 环境变量 |
 |---|---|
-| `zen-fs-sync:sync` | `DEBUG_ZEN_FS_SYNC_SYNC` |
-| `zen-fs-config` | `DEBUG_ZEN_FS_CONFIG` |
+| `my-app:sync` | `DEBUG_MY_APP_SYNC` |
+| `my-app:auth` | `DEBUG_MY_APP_AUTH` |
 
 #### 判定逻辑
 
@@ -272,49 +272,37 @@ export function listDebugModules(): { module: string; enabled: boolean }[] {
 | `isDebugEnabled(module)` | `(module: string) => boolean` | 查询某模块是否开启（无副作用） |
 | `listDebugModules()` | `() => { module: string; enabled: boolean }[]` | 列出 localStorage 中所有 debug 模块 |
 
-## 5. 集成计划
+## 5. 集成示例
 
-### 5.1 zen-fs-sync 集成
+### 5.1 通用项目集成
 
-**依赖变更**：`package.json` 添加 `zen-fs-debug-logger` 作为 dependency。
+**依赖变更**：`package.json` 添加 `localstorage-logger` 作为 dependency。
 
-**模块划分**：
+**模块划分**（示例）：
 
 | 模块名 | 覆盖文件 | 调用数 |
 |---|---|---|
-| `zen-fs-sync:sync` | sync-pair.ts | 29 |
-| `zen-fs-sync:utils` | utils.ts | 2 |
+| `my-app:sync` | sync-engine.ts | 29 |
+| `my-app:utils` | utils.ts | 2 |
+| `my-app:config` | config-manager.ts | 77 |
 
 **改动模式**：
 
 ```typescript
 // 改动前
-console.log(`[zen-fs-sync] syncBidirectional comparing source=${n} target=${n}`);
+console.log(`[my-app] syncBidirectional comparing source=${n} target=${n}`);
 
 // 改动后
-const log = createLogger('zen-fs-sync:sync');
+import { createLogger } from 'localstorage-logger';
+const log = createLogger('my-app:sync');
 log.log(`syncBidirectional comparing source=${n} target=${n}`);
 ```
 
-**删除旧 logger.ts**：旧的 `logger.ts`（`setDebug`/`isDebugEnabled`/`createLogger`）完全移除，由 zen-fs-debug-logger 替代。
-
-### 5.2 zen-fs-config 集成
-
-**依赖变更**：`package.json` 添加 `zen-fs-debug-logger` 作为 dependency。
-
-**模块划分**：
-
-| 模块名 | 覆盖文件 | 调用数 |
-|---|---|---|
-| `zen-fs-config` | config-repo.ts | ~77 |
-
-**改动模式**：与 zen-fs-sync 相同，将 `console.log/warn/error` 替换为 `log.log/warn/error`。
-
-### 5.3 zen-fs-config-admin 集成（vConsole）
+### 5.2 管理后台集成（vConsole）
 
 **依赖变更**：`package.json` 添加 `vconsole` 作为 dependency。
 
-**改动文件**：`src/components/Layout.tsx`
+**改动文件**：布局组件（如 `Layout.tsx`）
 
 **设计**：
 
@@ -348,8 +336,8 @@ const toggleVConsole = async () => {
 **与日志系统的配合**：
 
 - 模块日志默认开启（key=1），vConsole 中可以看到所有日志
-- 用户在 vConsole 的 Console 面板中执行 `localStorage.setItem('debug:zen-fs-sync:sync', '0')` 即可关闭某模块
-- vConsole 捕获的是 `console.*` 调用，与 zen-fs-debug-logger 的输出完全兼容
+- 用户在 vConsole 的 Console 面板中执行 `localStorage.setItem('debug:my-app:sync', '0')` 即可关闭某模块
+- vConsole 捕获的是 `console.*` 调用，与 localstorage-logger 的输出完全兼容
 
 ## 6. 测试计划
 
@@ -369,15 +357,15 @@ const toggleVConsole = async () => {
 
 ### 6.2 集成测试
 
-在 zen-fs-sync 和 zen-fs-config 中替换 console 调用后，运行现有测试套件确保无回归。
+在目标项目中替换 console 调用后，运行现有测试套件确保无回归。
 
 ## 7. 版本规划
 
 | 版本 | 内容 |
 |---|---|
 | 0.1.0 | 初始实现：createLogger、setDebugEnabled、isDebugEnabled、listDebugModules |
-| 0.2.0 | 集成到 zen-fs-sync 和 zen-fs-config，替换所有裸 console 调用 |
-| 0.3.0 | zen-fs-config-admin 集成 vConsole 按钮 |
+| 0.2.0 | 集成到目标项目，替换所有裸 console 调用 |
+| 0.3.0 | 管理后台集成 vConsole 按钮 |
 
 ## 8. 设计决策与权衡
 
@@ -402,7 +390,7 @@ const toggleVConsole = async () => {
 ### 为什么 error 级别也受开关控制？
 
 - 用户明确要求"根据这个 key 决定是否输出某条日志"，包括所有级别
-- 如果 error 需要始终输出，可以单独创建一个 `zen-fs-debug-logger:error` 模块
+- 如果 error 需要始终输出，可以单独创建一个 `my-app:error` 模块
 - 保持一致的行为比特殊处理 error 更简单可预测
 
 ### 为什么不做日志分级（LEVEL）？

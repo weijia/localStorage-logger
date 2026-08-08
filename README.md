@@ -1,21 +1,21 @@
-# zen-fs-debug-logger
+# localStorage-logger
 
 Lightweight localStorage-gated debug logger for browser/Node.js modules.
 
-**GitHub**: https://github.com/weijia/zen-fs-debug-logger
-**NPM**: `zen-fs-debug-logger`
+**GitHub**: https://github.com/weijia/localStorage-logger
+**NPM**: `localstorage-logger`
 **设计文档**: [DESIGN.md](./DESIGN.md)
 
 ## 安装
 
 ```bash
-npm install zen-fs-debug-logger
+npm install localstorage-logger
 ```
 
 ## 快速开始
 
 ```typescript
-import { createLogger } from 'zen-fs-debug-logger';
+import { createLogger } from 'localstorage-logger';
 
 const log = createLogger('my-app:auth');
 

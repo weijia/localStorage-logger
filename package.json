@@ -1,5 +1,5 @@
 {
-  "name": "zen-fs-debug-logger",
+  "name": "localstorage-logger",
   "version": "0.1.0",
   "description": "Lightweight localStorage-gated debug logger for browser/Node.js modules",
   "main": "dist/index.js",
@@ -31,13 +31,12 @@
     "localStorage",
     "console",
     "browser",
-    "module",
-    "zenfs"
+    "module"
   ],
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/weijia/zen-fs-debug-logger.git"
+    "url": "git+https://github.com/weijia/localStorage-logger.git"
   },
   "devDependencies": {
     "tsup": "^8.5.1",
